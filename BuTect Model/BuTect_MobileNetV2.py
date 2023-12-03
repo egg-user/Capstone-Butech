@@ -10,6 +10,7 @@ from keras.applications.mobilenet_v2 import MobileNetV2
 physical_devices = tf.config.list_physical_devices('GPU')
 tf.config.experimental.set_memory_growth(physical_devices[0], True)
 
+#Load MobileNetV2
 pre_trained_model = MobileNetV2(
     input_shape=(224, 224, 3),
     include_top=False,
