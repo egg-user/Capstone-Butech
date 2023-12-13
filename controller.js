@@ -5,31 +5,46 @@ const bcrypt = require('bcrypt');
 const crypto = require('crypto');
 const UsersModel = require('./models')
 const db = require('./database')
-const jwt = require('jsonwebtoken');
-// const secretKey = process.env.MY_KEY; 
 dotenv.config();
 
-// dotenv.config({ path: './.env' });
 
 
 
 const getAllUsers = (req, res) => {
     db.query('SELECT * FROM akun', (error, result) => {
         if (error) {
-            console.log(error);
-            res.status(500).send('Internal Server Error');
+            res.status(500).json({
+                message: 'Server error',
+                serverMessage: error
+            })
         } else {
-            res.json(result);
+            res.json({
+                message: 'GET Success',
+                result
+            });
         }
     });
 }
 
 const registerUsers = async (req, res) => {
+    const email = req.body.email;
+    const first_name = req.body.first_name;
+    const last_name = req.body.last_name;
+    const password = req.body.password;
+
+    if(!first_name || !last_name || !email.includes('@gmail.com') || !password) {
+        return res.json({
+            message: 'masukan data dengan benar'
+        })
+    }
+    
     try {
         const existingUser = await UsersModel.getUserByEmail(req.body.email);
 
         if (existingUser) {
-            res.status(400).send('Email is already registered');
+            res.status(400).json({
+                message: 'Email is already registered',
+            });
         } else {
             const salt = await bcrypt.genSalt(10);
             const hashedPassword = await bcrypt.hash(req.body.password, salt);
@@ -44,17 +59,23 @@ const registerUsers = async (req, res) => {
 
             db.query('INSERT INTO akun SET ?', newUser, (error, result) => {
                 if (error) {
-                    console.log(error);
-                    res.status(500).send('Internal Server Error');
+                    res.status(500).json({
+                        message: 'Internal Server Error',
+                        serverMessage: error,
+                    })
                 } else {
-                    console.log(result);
-                    res.status(201).send('User Created');
+                    res.status(201).json({
+                        message: 'User Registered',
+                        serverMessage: result,
+                    })
                 }
             });
         }
     } catch (error) {
-        console.log(error);
-        res.status(500).send('Internal Server Error');
+        res.status(500).json({
+            message: 'Internal Server Error',
+            serverMessage: error,
+        })
     }
 }
 
@@ -64,26 +85,34 @@ const loginUsers = async (req, res) => {
     const email = req.body.email;
     db.query('SELECT * FROM akun WHERE email = ?', email, async (error, results) => {
         if (error) {
-            console.log(error);
-            res.status(500).send('Internal Server Error');
+            res.status(500).json({
+                message: 'Internal Server Error',
+                serverMessage: error
+            });
         } else if (results.length > 0) {
             const user = results[0];
             try {
-                const token = jwt.sign({ email: email }, process.env.SECRET_KEY, { expiresIn: '1h' });
                 if (await bcrypt.compare(req.body.password, user.password)) {
+                    const token = UsersModel.generateToken(user.id);
                     res.json({
                         message: 'Login berhasil',
                         token: token,
                     });
                 } else {
-                    res.send('gagal');
+                    res.json({
+                        message: 'gagal'
+                    });
                 }
             } catch (error) {
                 console.log(error);
-                res.status(500).send('Internal Server Error');
+                res.status(500).json({
+                    message: 'Internal Server Error'
+                })
             }
         } else {
-            res.status(400).send('User not found');
+            res.status(400).json({
+                message: 'User not found'
+            });
         }
     });
 }
@@ -93,12 +122,18 @@ const deleteUsers = (req, res) => {
 
     db.query('DELETE FROM akun WHERE id = ?', userId, (error, result) => {
         if (error) {
-            console.log(error);
-            res.status(500).send('Internal Server Error');
+            res.status(500).json({
+                message: 'Internal Server Error',
+                serverMessage: error,
+            })
         } else if (result.affectedRows > 0) {
-            res.send(`User with ID ${userId} deleted successfully`);
+            res.json({
+                message: `User with ID ${userId} deleted successfully`
+            })
         } else {
-            res.status(404).send(`User with ID ${userId} not found`);
+            res.status(404).json({
+                message: `User with ID ${userId} not found`
+            });
         }
     });
 }
@@ -110,7 +145,9 @@ const forgotPasswordUsers = async (req, res) => {
         const user = await UsersModel.getUserByEmail(email);
 
         if (!user) {
-            return res.status(404).send('User not found');
+            return res.status(404).json({
+                message: 'User not found'
+            })
         }
 
         // Gtoken digenerate
@@ -119,8 +156,10 @@ const forgotPasswordUsers = async (req, res) => {
         // update token ke database
         db.query('UPDATE akun SET reset_token = ? WHERE id = ?', [token, user.id], (error, result) => {
             if (error) {
-                console.log(error);
-                return res.status(500).send('Internal Server Error');
+                return res.status(500).json({
+                    message: 'Internal Server Error',
+                    serverMessage: error,
+                })
             }
 
             // sending lokal dengan token
@@ -131,36 +170,46 @@ const forgotPasswordUsers = async (req, res) => {
             });
         });
     } catch (error) {
-        console.log(error);
-        res.status(500).send('Internal Server Error');
+        res.status(500).json({
+            message: 'Internal Server Error',
+            serverMessage: error,
+        })
     }
 }
 
 const resetPasswordUsers = async (req, res) => {
-    const token = req.params.token;
+    const reset_token = req.params.reset_token;
     const newPassword = req.body.newPassword;
 
     try {
-        const user = await UsersModel.getUserByResetToken(token);
+        const user = await UsersModel.getUserByResetToken(reset_token);
 
         if (!user) {
-            return res.status(400).send('Invalid or expired token');
+            return res.status(400).json({
+                message: 'Invalid or expired token'
+            });
         }
-
+        
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(newPassword, salt);
 
         db.query('UPDATE akun SET password = ?, reset_token = NULL WHERE id = ?', [hashedPassword, user.id], (error, result) => {
             if (error) {
-                console.log(error);
-                res.status(500).send('Internal Server Error');
+                res.status(500).json({
+                    message: 'Internal Server Error',
+                    serverMessage: error,
+                });
             } else {
-                res.send('Password reset successfully');
+                res.json({
+                    message: 'Password reset successfully'
+                });
             }
         });
     } catch (error) {
-        console.log(error);
-        res.status(500).send('Internal Server Error');
+        res.status(500).json({
+            message: 'Internal Server Error',
+            serverMessage: error,
+        });
     }
 }
 
@@ -174,7 +223,9 @@ const updateUser = async (req, res) => {
     const newEmail = req.body.new_email;
 
     if (!newFirstName && !newLastName && !newPassword && !newEmail) {
-        return res.status(400).send('Silahkan isi bagian yang kosong');
+        return res.status(400).json({
+            message: 'Silahkan isi bagian yang kosong'
+        });
     }
 
     const updateFields = {};
@@ -192,7 +243,9 @@ const updateUser = async (req, res) => {
     if (newEmail) {
         const existingUser = await UsersModel.getUserByEmail(newEmail);
         if (existingUser) {
-            res.status(400).send('Email is already registered');
+            res.status(400).json({
+                message: 'Email is already registered'
+            });
             return;
         } else {
             updateFields.email = newEmail;
@@ -201,13 +254,19 @@ const updateUser = async (req, res) => {
 
     db.query('UPDATE akun SET ? WHERE id = ?', [updateFields, userId], (error, result) => {
         if (error) {
-            console.log(error);
-            res.status(500).send('Internal Server Error');
+            res.status(500).json({
+                message: 'Internal Server Error',
+                serverMessage: error,
+            });
         } else {
             if (result.affectedRows > 0) {
-                res.send('User updated successfully');
+                res.json({
+                    message: 'User updated successfully',
+                });
             } else {
-                res.status(404).send('User not found');
+                res.status(404).json({
+                    message: 'User not found',
+                });
             }
         }
     });

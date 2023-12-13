@@ -34,7 +34,7 @@ app.use((err, req, res, next) => {
 
 
 // GET ALL USERS
-app.get('/users', Usercontrollers.getAllUsers);
+app.get('/users', verifyToken, Usercontrollers.getAllUsers);
 
 //REGISTER USER
 app.post('/users', Usercontrollers.registerUsers);
@@ -43,18 +43,16 @@ app.post('/users', Usercontrollers.registerUsers);
 app.post('/users/login', Usercontrollers.loginUsers);
 
 //DELETE USER
-app.delete('/users/:userId', Usercontrollers.deleteUsers);
+app.delete('/users/:userId', verifyToken, Usercontrollers.deleteUsers);
 
 //FORGOT PASSWORD
 app.post('/users/forgot-password', Usercontrollers.forgotPasswordUsers);
 
 //RESET PASSWORD
-app.post('/users/reset-password/:token', Usercontrollers.resetPasswordUsers);
+app.post('/users/reset-password/:reset_token', Usercontrollers.resetPasswordUsers);
 
 //UPDATE USER
-app.put('/users/edit/:userId', Usercontrollers.updateUser);
-
-
+app.put('/users/edit/:userId', verifyToken, Usercontrollers.updateUser);
 
 
 

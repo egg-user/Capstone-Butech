@@ -1,4 +1,8 @@
 const db = require('./database');
+const jwt = require('jsonwebtoken');
+const dotenv = require('dotenv');
+dotenv.config();
+const MY_KEY = process.env.MY_KEY;
 
 const getUserByEmail = async function getUserByEmail(email) {
     return new Promise((resolve, reject) => {
@@ -36,8 +40,13 @@ const getUserById = async function getUserById(userId) {
     });
 }
 
+const generateToken = function generateToken(userId) {
+    return jwt.sign({ userId }, MY_KEY, { expiresIn: '1h' });
+}
+
 module.exports = {
     getUserByEmail,
     getUserByResetToken,
-    getUserById
+    getUserById,
+    generateToken
 }
