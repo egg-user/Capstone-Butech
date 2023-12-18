@@ -1,6 +1,4 @@
-const mysql = require('mysql');
 const dotenv = require('dotenv');
-const express = require('express');
 const bcrypt = require('bcrypt');
 const crypto = require('crypto');
 const UsersModel = require('./models')
@@ -25,6 +23,31 @@ const getAllUsers = (req, res) => {
         }
     });
 }
+
+const getUserById = (req, res) => {
+    const userId = req.params.id;  
+    const query = 'SELECT first_name, last_name FROM akun WHERE id = ?';
+
+    db.query(query, [userId], (error, result) => {
+        if (error) {
+            res.status(500).json({
+                message: 'Server error',
+                serverMessage: error
+            });
+        } else {
+            if (result.length > 0) {
+                res.json({
+                    message: 'GET User by ID Success',
+                    user: result[0]  // Mengambil pengguna pertama dari hasil query
+                });
+            } else {
+                res.status(404).json({
+                    message: 'User not found'
+                });
+            }
+        }
+    });
+};
 
 const registerUsers = async (req, res) => {
     const email = req.body.email;
@@ -272,6 +295,25 @@ const updateUser = async (req, res) => {
     });
 }
 
+const getDescription = (req, res) => {
+    const kondisi = req.params.kelas;
+    const sql = 'SELECT deskripsi FROM buah WHERE kondisi = ?';
+
+    db.query(sql, [kondisi], (err, result) => {
+      if (err) {
+        console.error('Gagal mengambil data: ' + err.message);
+        res.status(500).json({ error: err.message });
+        return;
+      }
+
+      if (result.length > 0) {
+        res.json(result);
+      } else {
+        res.status(404).json({ error: 'Data tidak ditemukan' });
+      }
+    });
+};
+
 
 module.exports = {
     getAllUsers,
@@ -281,4 +323,6 @@ module.exports = {
     forgotPasswordUsers,
     resetPasswordUsers,
     updateUser,
+    getUserById,
+    getDescription
 }
