@@ -18,7 +18,7 @@ pre_trained_model = MobileNetV2(
 
 last_layer =  pre_trained_model.get_layer('out_relu')
 
-#Ganti jadi path sendiri
+# Change this to your own directory
 Training_Dir = 'D:/Documents/Capstone/FruitDataset/training/'
 Validation_Dir = 'D:/Documents/Capstone/FruitDataset/validation/'
 
