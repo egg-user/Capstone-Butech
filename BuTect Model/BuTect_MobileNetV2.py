@@ -98,7 +98,7 @@ converter = tf.lite.TFLiteConverter.from_saved_model(BuTect_Saved_Model)
 converter.optimizations = [tf.lite.Optimize.OPTIMIZE_FOR_SIZE]
 tflite_model = converter.convert()
 
-tflite_model_file = 'converted_model.tflite'
+tflite_model_file = 'model.tflite'
 
 with open(tflite_model_file, "wb") as f:
     f.write(tflite_model)
