@@ -10,7 +10,6 @@ from keras.applications.mobilenet_v2 import MobileNetV2
 physical_devices = tf.config.list_physical_devices('GPU')
 tf.config.experimental.set_memory_growth(physical_devices[0], True)
 
-#Load MobileNetV2
 pre_trained_model = MobileNetV2(
     input_shape=(224, 224, 3),
     include_top=False,
@@ -49,7 +48,7 @@ def train_val_generators(Training_Dir, Validation_Dir):
 train_generator, validation_generator = train_val_generators(Training_Dir, Validation_Dir)
 
 x = layers.Flatten()(last_layer.output)
-#x = layers.Dense(10, Kalau ada layer Dense jadi jelek akurasinya
+#x = layers.Dense(10, 
 #                 activation='relu',
 #                 kernel_regularizer='l2',
 #                 kernel_initializer='random_normal',
@@ -61,7 +60,7 @@ x = layers.Dense(10, activation='softmax')(x)
 model = Model(inputs=pre_trained_model.input, outputs=x)
 
 model.compile(
-    optimizer=RMSprop(learning_rate=0.0001),
+    optimizer=RMSprop(learning_rate=4.999999873689376e-05),
     loss=tf.keras.losses.CategoricalCrossentropy(),
     metrics=['accuracy'])
 
@@ -74,10 +73,32 @@ model.compile(
 #callbacks = myCallback()
 
 callback = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)
+lr_reduction = tf.keras.callbacks.ReduceLROnPlateau(monitor='val_loss', patience=5, verbose=1, factor=0.5,
+                                                        min_lr=0.00001)
 
 history = model.fit(
     train_generator,
-    epochs=25,
+    epochs=10,
     verbose=1,
     validation_data=validation_generator,
-    callbacks=[callback])
+    callbacks=[callback, lr_reduction])
+
+#Export the model
+BuTect_Saved_Model = 'butect_saved_model'
+tf.saved_model.save(model, BuTect_Saved_Model)
+loaded = tf.saved_model.load(BuTect_Saved_Model)
+
+print(list(loaded.signatures.keys()))
+infer = loaded.signatures["serving_default"]
+print(infer.structured_input_signature)
+print(infer.structured_outputs)
+
+#Convert to TFLite
+converter = tf.lite.TFLiteConverter.from_saved_model(BuTect_Saved_Model)
+converter.optimizations = [tf.lite.Optimize.OPTIMIZE_FOR_SIZE]
+tflite_model = converter.convert()
+
+tflite_model_file = 'converted_model.tflite'
+
+with open(tflite_model_file, "wb") as f:
+    f.write(tflite_model)
