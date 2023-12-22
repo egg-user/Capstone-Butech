@@ -1,4 +1,4 @@
-# Capstone-Butech
+# Capstone-Butect
 
 Instalation Back-end 
 --
